@@ -1,0 +1,102 @@
+// License Information:
+// SCI/Music.scyndi
+// Music
+// version: 24.02.16
+// Copyright (C) 2024 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+Module
+
+#use "Libs/SCI/Sys"
+#use "Libs/SCI/Audio"
+#use "Libs/SCI/GINIE"
+#use "Libs/SCI/JCR6"
+
+
+// This will allow Music to use the same data from ALL states (very important)
+var RGV = GINIE.CreateNew("MUSIC_GLOBAL_VARIABLES")
+Get bool buf
+	return Upper(RGV.Value("Music","BufferBool"))=="TRUE"
+End
+Set Bool buf
+	RGV.Value("Music","BufferBool",Lua.tostring(value))
+End
+
+
+get string Loaded
+	RGV.NewValue("MUSIC","LOADED","******* NOTHING AT ALL *******")
+	return RGV.Value("MUSIC","LOADED")
+end
+
+set string Loaded
+	RGV.Value("MUSIC","LOADED",Value)
+end
+
+
+string btag(b)
+	return sprintf("MUSIC_B%s",Lua.tostring(b))
+end
+
+get string buftag
+	return btag(buf)
+End
+
+void Play(string _Music)
+	if Loaded==_Music
+		printf("Request to load music '%s' received, but the music is already loaded!\n",_Music);
+		return
+	end
+	printf("Playing: %s\n",_Music)
+	Lua.assert(_Music!="","Empty string for music!")
+	if suffixed(_Music,"/")
+		plua f; f = JCR6.Dir(_Music)
+		plua m; m=f[math.random(0,len(f)-1)]
+		Play(m)
+		Return
+	End
+	var mbuf
+	buf=!buf
+	//print("Music ",_Music,"Buf",Buf,"BufTag",BufTag,"Kill:",!buf,btag(!buf))
+	mbuf = Audio.Load(_Music,buftag)
+	mbuf.Loop(0)
+	Loaded = _Music
+	Audio.Kill(btag(!buf))	
+end
+
+Void Stop()
+	If Audio.Playing(0)
+		Audio.StopChannel(0)
+	End
+End
+
+Get Int Pushed; return RGV.IntValue("PUSHED","PUSHED"); End
+Set Int Pushed; RGV.Value("PUSHED","PUSHED",Value); End
+
+Void Push()
+	Pushed++
+	RGV.Value("PUSHED",sprintf("P%08d",Pushed),Loaded)
+	CSayF("Pushed '%s' to position #%d",Loaded,Pushed)
+End
+
+Void Pull(DoNotPlay)
+	If Pushed<=0
+		Return
+	End
+	if !DoNotPlay
+		Play(RGV.Value("PUSHED",sprintf("P%08d",Pushed)))
+	End
+	CSayF("Pushed '%s' from position #%d",RGV.Value("PUSHED",sprintf("P%08d",Pushed)),Pushed)
+	Pushed--
+End
