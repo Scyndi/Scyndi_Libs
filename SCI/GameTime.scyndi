@@ -1,0 +1,102 @@
+// License Information:
+// SCI/GameTime.scyndi
+// Game Time
+// version: 24.02.16
+// Copyright (C) 2024 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+Module
+
+#use "Libs/SCI/InterVar"
+
+Get Int Raw
+	return gint.RawTime
+end
+
+get Int Secs
+	Return Raw % 60
+End
+
+get Int Seconds
+	Return Raw % 60
+End
+
+get Int RawMinutes
+	Return Raw div 60
+end
+
+Get Int Minutes
+	return RawMinutes % 60
+End
+
+Get int Hours
+	Return RawMinutes Div 60
+End
+
+plua _oldtime = os.time()
+Void Check()
+	plua _newtime = os.time()
+	if _oldtime!=_newtime
+		_oldtime=_newtime
+		gint.RawTime++
+	end
+end
+
+Get String FShow
+	String Ret
+	if Hours>0
+		Ret = sprintf("%dh",Hours)
+	end
+	If Minutes>0
+		Ret = sprintf("%s%d'",Ret,Minutes)
+	End
+	If Seconds>0
+		Ret = sprintf("%s%d\"",Ret,Seconds)
+	End
+	Return Ret
+End
+
+Get String Show
+	if Hours<=0 && Minutes<=0
+		return sprintf("%d",Seconds)
+	end
+	if Hours<=0
+		Return sprintf("%d:%02d",Minutes,Seconds)
+	end
+	Return sprintf("%d:%02d:%02d",Hours,Minutes,Seconds)
+End
+	
+
+#region "Phantasar time"
+const int Etmaal = 24*60*60
+Get Int RawMillos
+	Return math.floor( (raw/etmaal)*24000)
+End
+
+Get Int Millos
+	Return RawMillos % 1000
+end
+
+Get Int Vectas
+	Return RawMillos div 1000
+End
+
+Get String ShowPhantasar
+	if Vectas>0
+		return sprintf("%dV %dM",Vectas,Millos)
+	end
+	return sprintf("%dM",Millos)
+End
+#endregion
