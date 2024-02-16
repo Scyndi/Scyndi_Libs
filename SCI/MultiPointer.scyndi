@@ -1,0 +1,120 @@
+// License Information:
+// SCI/MultiPointer.scyndi
+// Multi Pointer
+// version: 24.02.16
+// Copyright (C) 2024 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+Module
+
+#use "libs/sci/Sys"
+#use "libs/sci/Graphics"
+#use "libs/sci/Events"
+#use "libs/sci/GINIE"
+
+Const int KSPD = 4
+
+ReadOnly int KUp = Events.KeyFromName("Up")
+ReadOnly int KDown = Events.KeyFromName("Down")
+ReadOnly int KLeft = Events.KeyFromName("Left")
+ReadOnly int KRight = Events.KeyFromName("Right")
+	
+get int KLeftButton
+	return Events.KeyFromName(CFG.Value("MULTIPOINTER::KEYS","LeftButton"))
+End
+
+get int KRightButton
+	return Events.KeyFromName(CFG.Value("MULTIPOINTER::KEYS","RightButton"))
+End
+
+
+var RGV = GINIE.CreateNew("MULTIPOINTER_GLOBAL_VARIABLES")
+var CFG = nil
+var pntr = nil
+
+int _X
+int _Y
+
+int _omx
+int _omy
+
+string Mode = "Mouse"
+
+var pointer
+
+global get int MX
+	return _X
+end
+
+global get int MY
+	return _Y
+end
+
+Void GetCFG()
+	If !CFG
+		CFG = GINIE.Obtain("GLOBALCONFIG")
+		CFG.NewValue("MULTIPOINTER::KEYS","LeftButton","SPACE")
+		CFG.NewValue("MULTIPOINTER::KEYS","RightButton","ESCAPE")
+	End
+End
+
+global get bool ML
+	GetCFG()
+	//CSayF("Mouse: %s; Key Code: %d; Hit: %s", Events.MouseHit(1), KLeftButton, Events.KeyHit(KLeftButton))
+	return Events.MouseHit(1) || Events.KeyHit(KLeftButton)
+end
+
+
+global get bool MR
+	GetCFG()
+	//CSayF("Mouse: %s; Key Code: %d; Hit: %s", Events.MouseHit(1), KLeftButton, Events.KeyHit(KLeftButton))
+	return Events.MouseHit(3) || Events.KeyHit(KRightButton)
+end
+
+
+// Receive pointer
+Void Rcv()
+	GetCFG()
+	If _omx!=Events.MouseX || _omy!=Events.MouseY
+		_X = Events.MouseX
+		_Y = Events.MouseY
+		_omx = _X
+		_omy = _Y
+		Mode = "Mouse"
+		Return
+	End
+	If Events.KeyDown(KLeft)
+		_X = math.max(0,_X - KSPD)
+		Mode = "Keyboard"
+	End
+	If Events.KeyDown(KRight)
+		_X = math.min(Graphics.Width,_X + KSPD)
+		Mode = "Keyboard"
+	End
+	If Events.KeyDown(KUp)
+		_Y = math.max(0,_Y - KSPD)
+		Mode = "Keyboard"
+	End
+	If Events.KeyDown(KDown)
+		_Y = math.min(Graphics.Height,_Y + KSPD)
+		Mode = "Keyboard"
+	End
+End
+
+void Draw()
+	PNTR = PNTR || ObtainImage("MOUSEPOINTER")
+	SetColor(255,255,255)
+	PNTR.Draw(MX,MY)
+end
