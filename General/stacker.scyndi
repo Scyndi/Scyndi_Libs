@@ -1,0 +1,94 @@
+// License Information:
+// General/stacker.scyndi
+// Data Stacker
+// version: 24.03.15
+// Copyright (C) 2024 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+Module
+
+Class StackNode
+	Var Pushed = nil
+	Var Value  = nil
+	
+	Var Push(_Value)
+		Var N = new StackNode()
+		N.Pushed = Self
+		N.Value  = _Value
+		Return N
+	End
+	
+	Var Pop()
+		Return Pushed
+	End
+End
+
+Class Stack
+	ReadOnly Var Me
+	Var Have
+	
+	Void Push(_Value)
+		If Have
+			Have = Have.Push(_Value)
+		Else
+			Have = new StackNode()
+			Have.Value = _Value
+		End
+	End
+	
+	Var Pop()
+		if !Have; return nil; end
+		plua ret;ret=Have
+		Have = Have.Pop()
+		//If !Have; return nil; end
+		Return Ret.Value
+	End
+	
+	Get Var Value
+		if !Have; return nil; end
+		Return Have.Value
+	End
+	
+	Set Var Value
+		If !Have; 
+			print("ERROR! Nothing in stack. Cannot define value!")
+		Else
+			Have.Value=Value
+		End
+	End
+	
+	
+	Get Var Array
+		plua ret = {}
+		plua Prc;Prc=Me.Have
+		While Prc
+			ret[len(ret)]=Prc.Value
+			Prc=Prc.Pushed
+		End
+		Return ret
+	End
+	
+	Void Clear(Thorough)
+		While Thorough && Self.Pop(); End
+		Have = Nil
+	End
+			
+	
+	Constructor (infinity)
+		Me = Self
+		Have = Nil
+		For v in Each(newArray(infinity)); self.Push(v); End
+	End
+End
