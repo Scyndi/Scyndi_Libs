@@ -80,6 +80,15 @@ Class Stack
 		Return ret
 	End
 	
+	Void PushArray(_Value,NoClear)
+		if (!NoClear); Me.Clear(); End
+		lua.assert(lua.type(_value)=="table",sprintf("I don't know how to stack up %s as an array (%s)",lua.type(_value),_value))
+		if len(_value)<=0; Return; End
+		For i=len(_value)-1,0,-1
+			Me.Push(_value[i])
+		End
+	End
+	
 	Void Clear(Thorough)
 		While Thorough && Self.Pop(); End
 		Have = Nil
