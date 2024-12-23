@@ -1,0 +1,99 @@
+// License:
+// 	General/Serialize.scyndi
+// 	Serialize for Scyndi
+// 	version: 24.12.23
+// 
+// 	Copyright (C) 2024 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+Module
+
+plua T(int n)
+	ret:=""
+	for i=1,n
+		ret+="\t"
+	end
+	return ret
+end
+
+String Lua(String N,value,int tabs=0)
+	ret:=T(tabs)..N.." = "
+	switch Type(Value)
+		case "string"
+			ret+=sprintf("\"%s\"",Value)
+		case "number"
+			ret+=lua.tostring(Value)
+		case "table"
+			first:=true			
+			ret+="{\n"
+			for k,v in spairs(Value)
+				if first
+					first=false
+				else
+					ret+=",\n"
+				end // if
+				switch Type(k)
+					case "string"
+						ret+=Lua(sprintf("[\"%s\"]",k),v,Tabs+1)
+					case "number"
+						ret+=lua("["..lua.tostring(k).."]",v,Tabs+1)
+					default
+						Lua.error("Invalid serialize index!")
+				end // switch
+			end // for
+			ret+="}"
+		default
+			ret+="nil"
+	end // switch
+	return ret
+End
+
+String JSON(A,B,C)
+	String Ret
+	String N
+	plua Value
+	int Tabs
+	if (!B)
+		N,Value,Tabs=A,B,C||0
+		Ret = T(Tabs)..N.. " : "
+	else
+		Value,Tabs=A,B||0
+		Ret = ""
+	End
+	switch Type(Value)
+		case "string"
+			ret+=sprintf("\"%s\"",Value)
+		case "number"
+			ret+=lua.tostring(Value)
+		case "table"
+			first:=true			
+			ret+="{\n"
+			for k,v in spairs(Value)
+				if first 
+					first=false
+				else
+					ret+=",\n"
+				end
+				ret+=JSON(sprintf("\"%s\"",k),v,Tabs+1)
+			end
+			ret+="}"
+		default
+			ret=ret.."\"ERROR!\""
+	end
+	return ret
+End

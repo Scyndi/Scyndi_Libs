@@ -1,0 +1,318 @@
+// License:
+// 	General/linkedlist.scyndi
+// 	Linked List for Scyndi
+// 	version: 24.12.23
+// 
+// 	Copyright (C) 2024 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+// License Information:
+// General/LinkedList.neilbundle/_neilbundle.neil
+// Linked List
+// version: 21.07.31
+// Copyright (C) 2020, 2021 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+
+
+Module
+
+// Conversion of the Linked List module originally written in NIL
+// to Neil. (Should work with minimal chances due tot he two languages
+// closely related to each other).
+
+
+class TLink
+     var Previous
+     var Next
+     readonly var List
+     readonly var MyObject
+     
+     void UnLink()
+        if self.Previous
+           self.Previous.Next = self.Next
+        end
+        if self.Next
+           self.Next.Previous = self.Previous
+        end
+        if self.List.First == self
+           self.List.First = self.Next
+        end
+        if self.List.Last == self
+           self.List.Last = self.Previous
+        end
+        
+        // This is needed or Lua will get memory leaks. 
+        // The garbage collector of Lua is not that well working!
+        self.Previous=nil;
+        self.Next=nil;
+     end
+
+     CONSTRUCTOR(parentlist,obj, P, N)
+        assert(obj!=nil,"Link needs an object of any kind. 'nil' is not acceptable")
+        assert(parentlist,"No parent")
+        self.Previous = P
+        self.Next = N
+        self.List = parentlist
+        self.MyObject = obj
+     end
+end
+
+class TLinkedList
+//module class
+    static bool _debug = true
+    var First
+    var Last
+    readonly string want="var"
+    
+    void Clear()
+		var o
+		var n
+		o = First
+		while o
+			n = o.Next
+			o.Next=nil
+			o.Previous=nil
+			o = n
+		end		
+		First = nil
+		Last = nil
+	end
+	
+	get bool Empty
+		Return First==nil
+	End
+   
+    //private 
+    static void chat(string cht)
+        if self._debug
+          print(cht)
+        end
+    end
+    
+
+    get delegate Each
+        //var ret
+        var current
+        var nextlink
+        current=self.First
+        if current
+			nextlink = current.Next
+		end
+        //ret = var ()
+        dDef ret
+            if current==nil
+              return nil 
+            end
+            var retobj 
+            var retlink            
+            retlink=current
+            retobj = current.MyObject
+            current = nextlink
+            if nextlink
+				nextlink = nextlink.Next
+			end
+            return retobj,retlink
+        end        
+        return ret
+    end
+    
+    void RemoveDupes()
+		for chk,lnk in $Each
+			var nlnk
+			nlnk=lnk.Next
+			while nlnk				
+				if chk==nlnk.MyObject
+					nlnk.UnLink()
+				end
+				nlnk = nlnk.Next // remember the unlinked link is no longer being linked to by other links, but the link itself still has its links
+			end
+		end
+    end
+    
+
+    get int Count
+        int i = 0
+        for o in self.Each
+            i = i + 1
+        end
+        return i
+    end
+    
+    get int LEN
+		return Count
+	end
+
+    
+
+    get table Array
+        table ret
+        for o in self.Each
+            //ret[#ret+1]=o
+            ret+=o
+        end
+        return ret
+    end
+
+    
+
+    void AddLast(obj)
+         if self.want!="var"
+            assert(lua.type(obj)==self.want,"This list may only contain "..self.want)
+         end
+         var newLink
+         newLink = new TLink(self,obj,self.Last,nil)
+         if self.Last
+            self.Last.Next=newLink
+         end
+         self.First=self.First || newLink
+         self.Last=newLink
+    end
+
+    
+
+    void AddFirst(obj)
+         if self.want!="var"
+            assert(type(obj)==self.want,"This list may only contain "..self.want)
+         end
+         var newLink
+         newLink = new TLink(self,obj,nil,self.First)
+         if self.First
+            self.First.Previous = newLink
+         end
+         self.Last = self.Last || newLink
+         self.First=newLink
+    end
+
+    
+
+
+    
+
+    get var OLast
+        if self.Last
+           return self.Last.MyObject
+        end
+        return nil
+    end
+
+    set var OLast
+        self.AddLast(value)
+    end
+
+    get var OFirst
+        if self.First
+           return self.First.MyObject
+        end
+        return nil
+    end
+
+    set var OFirst
+        self.AddFirst(value)
+    end
+
+    var AtIndex(int indx)
+        var ret 
+        ret = self.First
+        if !ret  
+           Lua.error("Empty List") 
+        end
+        while indx>0
+           ret = ret.Next
+           Lua.assert(indx>0,"List index out of bounds")
+           indx = indx - 1
+        end
+        return ret.MyObject
+    end
+    void RemoveItem(item,times)       
+       for o,l in self.Each
+           if o==item
+              l.Unlink()
+              if times
+                 times = times - 1
+                 if times == 0
+                    break
+                 end
+              end
+           end
+       end
+    end
+
+    void RemoveItems(items,times)
+       table map
+       for i,v in ipairs(items)
+           map[v]=true
+       end
+       for o,l in self.Each
+           if map[o]
+              l.Unlink()
+              if times 
+                 times = times - 1
+                 if times == 0
+                    break
+                 end
+              end
+           end
+       end
+    end
+    
+    var ToArray()
+        table ret
+        for v in self.Each
+            //ret[#ret+1]=v
+            ret += v
+        end
+        return ret
+    end
+    
+    static var FromArray(ar)
+		var ret
+		ret = new TLinkedList()
+		for _,v in ipairs(ar)
+			ret.AddLast(v)
+		end
+		return ret
+    end
+
+    CONSTRUCTOR(want)
+         self.want=want || "var"
+    end
+        
+    DESTRUCTOR
+		// All links must be unlinked or memory leaks can occur
+		// due to Lua's poor garbage collector (when it comes to cross-linked references).
+		self.Clear()
+	end
+
+end
+
+
+
+//return TLinkedList
