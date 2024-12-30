@@ -1,0 +1,162 @@
+// License:
+// 	General/vectors.scyndi
+// 	Vectors
+// 	version: 24.12.31
+// 
+// 	Copyright (C) 2020, 2021, 2024 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+
+module 
+
+class Vector
+
+	readonly string reqtype
+	readonly table tab
+	int _length
+	
+	void erase(value,int times=0)
+		int erased = 0
+		for i=0,_length-1
+			if value==tab[i] && (times<=0 || erased<times)
+				erased ++
+			end
+			tab[i] = tab[i+erased]
+		end
+		_length -= erased
+		table kill
+		for i,_ in pairs(tab)
+			if i>=_length
+				kill += i
+			end
+		end
+		for victim in each(kill)
+			tab[victim]=nil
+		end
+	end
+	
+	void check(value)
+		switch reqtype
+			case "var"
+				// Anything goes!
+			case "table"
+				lua.assert(lua.type(value)=="table" || assert(lua.type(value)=="nil"),"This vector requires a table, not a "..lua.type(value))
+			case "string"
+				lua.assert(lua.type(value)=="string","This vector requires a string, not a "..lua.type(value))
+			case "int"
+				lua.assert(lua.type(value)=="number" && value==math.floor(value),"This vector requires an integer, not a "..lua.type(value))
+			case "number" "float"
+				lua.assert(lua.type(value)=="number","This vector requires a number, not a "..lua.type(value))
+			case "bool" "boolean"
+				lua.assert(lua.type(value)=="boolean","This vector requires a boolean, not a "..lua.type(value))
+			default
+				lua.error("No proper check yet for type: "..reqtype)
+		end
+	end
+	
+	void push_back(value)
+		Self.check(value)
+		tab[_length]=value
+		_length++
+	end
+	
+	get int size
+		return _length
+	end
+	
+	var __NumberIndex(int idx)
+		lua.assert(idx>=0 && idx<_length,"Vector index out of range ("..idx..".".._length..")")
+		return tab[idx]
+	end
+	
+	void __NumberNewIndex(int idx,value)
+		lua.assert(idx>=0 && idx<_length,"Vector index out of range")
+		Self.check(value)
+		tab[idx] = value
+	end
+	
+	get delegate Each
+		int i=0
+		delegate ret 
+		//ret = var()
+		ddef ret
+			if i>=_length
+				return nil
+			end
+			var ret := tab[i]
+			if ret==nil
+				ret = "nil"
+				// As Lua will stop iteration as soon as 'nil' is reached this was needed as a protection!
+			end
+			i++
+			return ret
+		end
+		return ret
+	end
+	
+	get delegate IEach
+		int i=0
+		delegate ret 
+		//ret = var()
+		ddef ret
+			if i>=_length
+				return nil
+			end
+			var ret := tab[i]
+			if ret==nil
+				ret = "nil"
+				// As Lua will stop iteration as soon as 'nil' is reached this was needed as a protection!
+			end
+			i++
+			return i-1
+		end
+		return ret
+	end
+	
+	get delegate IPairs
+		int i=0
+		delegate ret 
+		//ret = var()
+		ddef ret
+			if i>=_length
+				return nil
+			end
+			var ret := tab[i]
+			if ret==nil
+				ret = "nil"
+				// As Lua will stop iteration as soon as 'nil' is reached this was needed as a protection!
+			end
+			i++
+			return i-1,ret
+		end
+		return ret
+	end
+	
+	void clear()
+		int l:=_length
+		for i=0,l
+			tab[i] = nil
+		end
+		_length=0
+	end
+	
+	CONSTRUCTOR(string wanttype="var")
+		reqtype = lower(wanttype)
+	end
+
+end
