@@ -1,0 +1,305 @@
+// License:
+// 	SCI/scenario_star.scyndi
+// 	Star Story Scenario Routines - Converted from Neil to Scyndi
+// 	version: 25.01.01 X
+// 
+// 	Copyright (C) 2020, 2021, 2025 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+
+
+
+// This is just a translation from Lua to NIL for better integration.
+
+
+//-- $USE libs/qgfx
+// #use 'libs/strings'
+
+//local scen={}
+
+Module
+
+#use "Libs/SCI/Sys"
+#use "Libs/SCI/Graphics" 
+
+locextern _CSay "Scyndi.Globals.CSay" 
+
+table portret
+table gbtdata
+
+void RemoveData(string file) 
+	gbtdata = gbtdata || {} 
+	gbtdata[file] = nil 
+end
+
+class ScenRec
+	string Header
+	string PicDir
+	string PicSpc
+	string PicRef
+	string AltTxtFont
+	string SoundFile
+	table Lines
+	
+	CONSTRUCTOR
+		Lines = {}
+	end
+	
+end	
+
+void ProcessBLine(Rec,string Prefix,string DLine)
+	switch Prefix
+
+		case "ERROR"
+			Lua.error("Unknown scenario prefix") 			
+		case "!"
+		 	Rec.Header = DLine 
+		case "*"
+			Rec.PicDir = DLine
+		case ":"
+			Rec.PicSpc = DLine
+		case "%"
+			// Dummied old line, as this is also referring to .ttf files.
+			// BlitzMax could read them, but MonoGame cannot.
+			// ["%"] = function(Rec,DLine) Rec.AltTxtFont = "Fonts/"..DLine..".ttf"; _CSay("Font: "..DLine)  end, -- Alternate font
+			Rec.AltTxtFont = "Fonts/"..DLine..".jfbf"
+			//..".ttf"
+		case "#"
+			//mtable.insert(Rec.Lines,DLine)
+			Rec.Lines+=DLine
+		case "$"
+			Rec.SoundFile = DLine
+		case "-"
+			// Nothing here
+		default
+			Lua.error("Unknown scenario prefix - "..Prefix)
+	end
+	//if !Rec
+	//	print("Rec = nil?",Prefix,DLine,"N/A")
+	//else
+	//	print(Rec,Prefix,DLine,#Rec.Lines,Rec.Header,Rec.PicDir)
+	//end
+end
+
+//int len(a) 
+//	return len(a) 
+//end
+
+//local Image = { -- Faking the original GALE module qith the qgfx routines
+//   Exists = ImageLoaded,
+//   Exist = ImageLoaded,
+//   AssignLoad = LoadImage   
+//}
+//private 
+group ScenImage
+	delegate Exists
+	get var Exist
+		return self.Exists
+	end
+	set var Exist
+		self.Exists = value
+	end
+	delegate AssignLoad
+	delegate Loaded
+end
+
+
+//private 
+//group scen
+//module
+LocExtern ImageExists "Scyndi.Class.ScenImage.Exists"
+LocExtern ImageLoad "Scyndi.Class.ScenImage.Load"  
+LocExtern Portret "Scyndi.Class.Scenario_Star.Portret"
+LocExtern Loaded "Scyndi.Class.TImage.HasTag"
+LocExtern RemoveData "Scyndi.Class.Scenario_Star.RemoveData"
+LocExtern _Self "Scyndi.Class.Scenario" 
+group Scenario
+
+	// Done to make multi-engine stuff possible.
+	//link ImageExists = ScenImage.Exists
+	//link ImageLoad = ScenImage.Load
+	delegate Error = Lua.error
+
+	//link portret = portret
+	// link btdata = btdata
+	//link RemoveData = RemoveData
+	//link Loaded = Image.Loaded	
+	
+	get table btdata
+		return gbtdata
+	end
+	
+	set table btdata
+		gbtdata = value
+	end
+	
+	// Must be set before usage
+	string lang
+	
+	// Must be set before usage
+	delegate JCR_Lines
+	delegate JCR_Exists
+	delegate print
+	
+	string audioext
+	void _CONSTRUCTOR()
+		_Self.audioext = "ogg"
+		_Self.print = Lua.Scyndi.Globals.Print
+		Print("Scenario parser loaded")
+	end
+
+	table LoadData(string file,loadas,merge)
+		assert(_Self.lang!="","scenario.lang has not been set!")
+		assert(_Self.JCR_Lines,"scenario.JCR_Lines has not been set!")
+		assert(_Self.JCR_Exists,"scenario.JCR_Exists has not been set!")
+		string lang
+		lang = trim(lang)
+		file = trim(file)
+		loadas = trim(loadas || file)
+		int LineNumber
+		string Line
+
+		table crap 
+		//_Self.print("Loading: Scenario/"..lang.."/"..file)
+		//crap = scen.JCR_Lines('Scenario/'..lang.."/"..file)
+		Print("Loading Scenarion: ",file)
+		crap = JCR_Lines(file)
+		_Self.print("= "..len(crap).." lines read!")
+		table ret
+		string section 
+		section = "[rem]"
+		string L
+		string Prefix
+		string DLine
+		var WorkRec
+		ret["@@file@@"] = file
+
+		if merge 
+			ret = btdata[loadas || file] || {} 
+		end 
+		// _CSay("Loading BoxText Data: "..file)
+		for LineNumber,Line in ipairs(crap) 
+			L = trim(Line)
+			if L!="" 
+				if left(L,1)=="[" && right(L,1=="]")
+					section = L
+				else
+					switch section
+						case "[rem]"
+						case "[tags]"
+							ret[L] = {}
+						case "[scenario]"
+							Prefix = left(L,1)
+							DLine = right(L,len(L)-1)             
+							if (! WorkRec) && Prefix!="@" && Prefix!="-" 
+								error("Trying to assign data, while no boxtext record has yet been created in line #"..LineNumber) 
+							end
+							if Prefix=="@" 
+								WorkRec = new ScenRec()
+								//{ Lines = {}, Header="", PicDir="", PicSpc="", SoundFile="" }
+								//mtable.insert(ret[DLine],WorkRec)                
+								ret[DLine] += WorkRec
+								//Lua.print("WorkRec: ",WorkRec)
+							elseif Len(L)>1 
+								//Lua.print("Processing: ",WorkRec)
+								ProcessBLine(WorkRec,Prefix,DLine)   
+							end
+						default
+							error("Unknown language section: "..section.." in line #"..LineNumber)   
+					end
+				end
+			end
+		end
+		
+		// dummy this all
+		if false
+		
+		// Load Images
+		//local k,i,tag,rec // Lua uses none of them, but I didn't know that when I wrote this code first... :P
+		string picfile
+		string picref
+		for k,tag in pairs(ret)  
+			for i,rec in pairs(tag) 
+				picfile = "GFX/Portret/"..rec.PicDir.."/"..rec.PicSpc..".png"
+				//--print('picfile',picfile)
+				//picref = mstring.upper(rec.PicDir).."."..mstring.upper(rec.PicSpc)
+				picref = upper(rec.PicDir).."."..upper(rec.PicSpc)
+				if (! TImage.HasTag(picref)) && _Self.JCR_Exists(picfile) 
+					//var ti
+					//ti = Image.AssignLoad(picfile,picref)
+					ti := LoadImage(picfile,picref)
+					portret[picref]=true 
+					if _CSay
+						_CSay('Loaded '..picfile..' on '..picref.." (BoxText)") 
+					end // if _CSay
+					if ! TImage.HasTag(picref) 
+						if _CSay
+							_CSay("= FAILED!") 
+						end
+					end
+					if ! ti 
+						if _CSay
+							_CSay("= NIL RETURNED") 
+						end
+					end
+				elseif TImage.HasTag(picref) 
+					portret[picref]=true
+				end
+				if portret[picref] 
+					rec.PicRef=picref
+				end 
+			end
+		end
+
+		//-- Auto Tie Sound Files
+		Print("Looking for vocals!")
+		for k,tag in pairs(ret)
+			for i,rec in pairs(tag) 
+				if _Self.JCR_Exists("VOCALS/"..file.."/"..k.."_"..i..".".._Self.audioext) 
+					rec.SoundFile = "Vocals/"..file.."/"..k.."_"..i..".".._Self.audioext 
+					if _CSay 
+						Print("Got sound for "..k.." #"..i) 
+					end
+				else
+					Print("Vocals/"..file.."/"..k.."_"..i..".".._Self.audioext .. " not found!")
+					//-- _CSay("no sound for "..k.." #"..i.."   (VOCALS/"..file.."/"..k.."_"..i..".ogg)",255,0,0) -- Only annoying. Can be unremmed if needed (which I doubt).  
+				end
+			end 
+		end     
+		
+		// -- end of dummied code
+		end 
+		// -- closure
+		btdata[loadas || file] = ret    
+		//-- print(serialize("btdata",btdata)) -- Debug Line, must be on rem in release
+		return ret
+	end
+	
+	table LoadNewData(string file,loadas)
+		btdata[loadas || file] = btdata[loadas || file] || _Self.LoadData(file,loadas)
+		return btdata[loadas || file]
+	end
+	
+end
+
+init
+	Scenario._CONSTRUCTOR()
+	print("Scenario library loaded!")
+end
+
+// return scen
