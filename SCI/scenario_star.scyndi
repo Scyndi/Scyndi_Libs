@@ -1,7 +1,7 @@
 // License:
 // 	SCI/scenario_star.scyndi
 // 	Star Story Scenario Routines - Converted from Neil to Scyndi
-// 	version: 25.01.01 X
+// 	version: 25.03.13
 // 
 // 	Copyright (C) 2020, 2021, 2025 Jeroen P. Broks
 // 
@@ -82,6 +82,7 @@ void ProcessBLine(Rec,string Prefix,string DLine)
 		case "#"
 			//mtable.insert(Rec.Lines,DLine)
 			Rec.Lines+=DLine
+			//printf("%04d> %s\n",len(Rec.Lines),DLine) // Debug
 		case "$"
 			Rec.SoundFile = DLine
 		case "-"
@@ -162,11 +163,16 @@ group Scenario
 		_Self.print = Lua.Scyndi.Globals.Print
 		Print("Scenario parser loaded")
 	end
+	
+	void SetLang(String L)
+		_Self.Lang = L
+	End
 
 	table LoadData(string file,loadas,merge)
-		assert(_Self.lang!="","scenario.lang has not been set!")
-		assert(_Self.JCR_Lines,"scenario.JCR_Lines has not been set!")
-		assert(_Self.JCR_Exists,"scenario.JCR_Exists has not been set!")
+		t:=sprintf("LoadData(%s,%s,%s): ",file,loadas,merge)
+		assert(_Self.lang!="",t.."scenario.lang has not been set!")
+		assert(_Self.JCR_Lines,t.."scenario.JCR_Lines has not been set!")
+		assert(_Self.JCR_Exists,t.."scenario.JCR_Exists has not been set!")
 		string lang
 		lang = trim(lang)
 		file = trim(file)
@@ -212,7 +218,8 @@ group Scenario
 							if Prefix=="@" 
 								WorkRec = new ScenRec()
 								//{ Lines = {}, Header="", PicDir="", PicSpc="", SoundFile="" }
-								//mtable.insert(ret[DLine],WorkRec)                
+								//mtable.insert(ret[DLine],WorkRec)     
+								Lua.assert(ret[DLine],sprintf("Scenario tag %s has not been properly assigned in %s:%d",DLine,file,LineNumber))
 								ret[DLine] += WorkRec
 								//Lua.print("WorkRec: ",WorkRec)
 							elseif Len(L)>1 

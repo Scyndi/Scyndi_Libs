@@ -1,9 +1,9 @@
 // License:
 // 	SCI/Music.scyndi
 // 	Music
-// 	version: 24.12.23
+// 	version: 25.03.13
 // 
-// 	Copyright (C) 2024 Jeroen P. Broks
+// 	Copyright (C) 2024, 2025 Jeroen P. Broks
 // 
 // 	This software is provided 'as-is', without any express or implied
 // 	warranty.  In no event will the authors be held liable for any damages
@@ -123,4 +123,8 @@ Void Pull(DoNotPlay)
 	End
 	CSayF("Pushed '%s' from position #%d",RGV.Value("PUSHED",sprintf("P%08d",Pushed)),Pushed)
 	Pushed--
+End
+
+Void Pop(DoNotPlay)
+	Pull(DoNotPlay)
 End
