@@ -1,0 +1,41 @@
+Module
+
+class Dim2lib
+	readonly int mx1
+	readonly int mx2
+	readonly table array = {}
+	Constructor(string tpe,_mx1,_mx2)
+		mx1=_mx1
+		mx2=_mx2
+	end
+	int getidx(int d1,int d2)
+		return (d1*d2)+d2
+	end
+	Var GETVALUE(int d1,int d2)
+	//Var GetValue(int d1,int d2)
+		return array[self.getidx(d1,d2)]
+	end
+	Void SetValue(int d1,int d2,v)
+		array[self.getidx(d1,d2)]=v
+	end
+	
+	Get Var Serial
+		int i1=0
+		int i2=0
+		ddef ret
+			ri1:=i1
+			ri2:=i2
+			i1++
+			if i1>=mx1
+				i1=0
+				i2++
+			end
+			if ri2>=mx2
+				return nil,nil,nil
+			end
+			return ri1,ri2,array[(ri1*ri2)+ri2]
+		end
+		return ret
+	end
+			
+End

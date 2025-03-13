@@ -1,0 +1,68 @@
+// License:
+// 	General/Dim2Lib.scyndi
+// 	Dom2Lib
+// 	version: 25.03.13
+// 
+// 	Copyright (C) 2025 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+Module
+
+class Dim2
+	readonly int mx1
+	readonly int mx2
+	readonly table array = {}
+	Constructor(string tpe,_mx1,_mx2)
+		mx1=_mx1
+		mx2=_mx2
+	end
+	int getidx(int d1,int d2)
+		return (d1*mx2)+d2
+	end
+	Var GETVALUE(int d1,int d2)
+	//Var GetValue(int d1,int d2)
+		return array[self.getidx(d1,d2)]
+	end
+	Void SetValue(int d1,int d2,v)
+		array[self.getidx(d1,d2)]=v
+	end
+	
+	void Clear()
+		Array = {}
+	End
+	
+	Get Var Serial
+		int i1=0
+		int i2=0
+		ddef ret
+			ri1:=i1
+			ri2:=i2
+			i1++
+			if i1>=mx1
+				i1=0
+				i2++
+			end
+			if ri2>=mx2
+				return nil,nil,nil
+			end
+			return ri1,ri2,array[(ri1*mx2)+ri2]
+		end
+		return ret
+	end
+			
+End
