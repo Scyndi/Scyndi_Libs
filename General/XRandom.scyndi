@@ -1,0 +1,51 @@
+// License:
+// 	General/XRandom.scyndi
+// 	eXtended Random
+// 	version: 25.07.01
+// 
+// 	Copyright (C) 2025 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+Module
+
+Global Var XRnd(a,b)
+	switch type(a)
+		case "number"
+			return Ternary(b,math.random(a,b),math.random(a))
+		case "string"
+			l:=len(a)
+			i:=math.random(1,len(a))
+			return Mid(a,i,1)
+		case "table"
+			t:={}			
+			for k,_ in pairs(a)
+				t+=k
+			end
+			if len(t)<=0
+				printf("\x07\x1b[93mERROR>\x1b[47m Table %s happens to be empty",a)
+				return nil
+			end
+			i:=math.random(1,len(t))-1
+			rk:=t[i]
+			return a[rk]
+		default
+			printf("\x07\x1b[93mERROR>\x1b[47m Type '%s' is not known to XRnd",type(a))
+			return nil
+	end
+end
+		
