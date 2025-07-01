@@ -1,7 +1,7 @@
 // License:
 // 	Dyrt/SASKIA.scyndi
 // 	SASKIA = Serial Adventure Scripting Keeping Interface Advancements
-// 	version: 25.03.13
+// 	version: 25.07.01
 // 
 // 	Copyright (C) 2019, 2025 Jeroen P. Broks
 // 
@@ -21,25 +21,8 @@
 // 	   misrepresented as being the original software.
 // 	3. This notice may not be removed or altered from any source distribution.
 // End License
-// License Information:
-// saskia.nlb/saskia.nil
-// SASKIA
-// version: 20.07.19
-// Copyright (C) 2019 Jeroen P. Broks
-// This software is provided 'as-is', without any express or implied
-// warranty.  In no event will the authors be held liable for any damages
-// arising from the use of this software.
-// Permission is granted to anyone to use this software for any purpose,
-// including commercial applications, and to alter it and redistribute it
-// freely, subject to the following restrictions:
-// 1. The origin of this software must not be misrepresented; you must not
-// claim that you wrote the original software. If you use this software
-// in a product, an acknowledgment in the product documentation would be
-// appreciated but is not required.
-// 2. Altered source versions must be plainly marked as such, and must not be
-// misrepresented as being the original software.
-// 3. This notice may not be removed or altered from any source distribution.
-// End License Information
+
+Module
 
 
 
@@ -63,20 +46,39 @@
 // This line is set up for Bubble engines. When used in alternate engines
 // you may need to alter the foldername a little bit.
 
-#use "libs/strings"
-#use "libs/stack"
+#use "libs/sci/sys"
+#use "libs/sci/sstring"
+
+//#use "libs/strings"
+#use "libs/stacker"
 #use "libs/linkedlist"
 #use "libs/datetime"
 
-#macro saskiatimeout true
+locExtern assert "assert"
+locExtern saskiatimeout "true"
+locExtern or "or"
+locExtern and "and"
+locExtern not "not"
+locExtern _G "_G"
+locExtern tonumber "tonumber"
+locExtern debug "debug"
+
+int _len(abc)
+	// Very extremely dirty! Don't try at home if you don't know what you are doing!
+	locExtern __ln "#"
+	return __ln abc
+end
 
 
 //delegate SASKIA_CHAT
-delegate compile
+//delegate compile
+locExtern compile "load"
+
+
 var retval
-table instruction
+//table instruction
 table instructionstrue
-table instructionsmeta
+//table instructionsmeta
 
 void as_tmo()
 	if saskiatimeout
@@ -84,102 +86,210 @@ void as_tmo()
 	end
 end
 
+
+// Void routine
+plua brutesplit(string str,string sep=" ")
+	// Set up this way to make sure arrays keep starting on 1 -- saves trouble -- this time -- I hope. 
+	return XSplit("Brute"..sep..str)
+End
+
+// No longer needed, and this doesn't even work in Scyndi
 // Older versions of Lua use 'loadstring'. Newer versions use 'load'. I had to keep both possibilities in mind here!
-#pure
-compile = loadstring or load 
-#endpure
+//#pure
+//compile = loadstring or load 
+//#endpure
 
-instructionsmeta.__newindex = void()
-	error("The instruction table is READ ONLY!")
-end
 
-instructionsmeta.__index = var(t,string k)
-	return assert(instructionstrue[k],"Instruction "..k.." doesn't exist")
-end
+QuickMeta instruction
+	NewIndex
+	//instructionsmeta.__newindex = void()
+		error("The instruction table is READ ONLY!")
+	end
 
-setmetatable(instruction,instructionsmeta)
+	Index
+	//instructionsmeta.__index = var(t,string k)	
+		return assert(instructionstrue[key],"SASKIA Instruction "..key.." doesn't exist")
+	end
+end	
 
-instructionstrue.CALL = void (session,params)
+//setmetatable(instruction,instructionsmeta)
+
+QuickMeta ScynSasGet
+	Index 
+		//return _G[key] || Lua.Scyndi.AllIdentifiers[key]
+		ret := Ternary(Lua.Scyndi.HasIdentifier(key),Lua.Scyndi.AllIdentifiers[key],_G[key])
+		return ret
+	End
+	NewIndex
+		//if _G[key]
+		if !Lua.Scyndi.AllIdentifiers(key)
+			CSayF("\x1b[91mWARNING!\x1b[96m\x07 %s-value '%s' written to pure Lua global '%s'",type(value),value,key)
+			_G[key]=value
+		else
+			Lua.Scyndi.AllIdentifiers[key]=value
+		end
+	end
+End
+
+Init
+
+ddef __CALL
+	plua session
+	plua params
+	session,params=infinity
+//instructionstrue.CALL = void (session,params)
 	string f
 	string d
 	delegate ls
 	f = params[1]
-	d = "return "..f .. "("
-	for i,p in pairs(params) do
-		if i>1 and p!="" then
-			if i>2 then d = d ..", " end
+	d = "return Scyndi.Globals.ScynSasGet."..f .. "("
+	for i,p in Lua.ipairs(params) 
+		if i>1 and p!="" 
+			if i>2 
+				d = d ..", " 
+			end
 			d = d .. p
 		end
 	end
 	d = d .. ")"
 	//CWriteLine(d,180,255,0)
+	//CSay(Infinity)
+	//for k,v in pairs(params); print(k,v); end
 	//CSayF("SASKIA CALL> %s",d)
-	ls = assert(compile(d,"SASKIA CALL"))
+	plua cs
+	plua er
+	//print(d)
+	cs,er = compile(d,"SASKIA CALL")
+	ls = assert(cs,sprintf("%s - SASKIA does: %s",er,d))
 	retval = ls()
 end
+instructionstrue.CALL = __Call
 
-instructionstrue.JMP = void (session,label)
-	var script
-	script = session.script
-	assert(script.labels[label[1]],"SASKIA: Label '"..tostring(label[1]).."' doesn't exist!")
-	session.curline = script.labels[label[1]] - 1
+ddef __JMP
+//instructionstrue.JMP = void (session,label)
+	plua session
+	plua label
+	session,label=infinity
+	//var _script
+	_script := session.parent_script
+	assert(_script.labels[label[1]],"SASKIA: Label '"..tostring(label[1]).."' doesn't exist!")
+	session.curline = _script.labels[label[1]] - 1
 end
+instructionstrue.JMP = __JMP
 instructionstrue.JUMP = instructionstrue.JMP
 
-instructionstrue.CHK = void (session,para)
+//instructionstrue.CHK = void (session,para)
+ddef __CHK
+	plua session
+	plua para
+	session,para = infinity
 	delegate ls
-	assert(#para>=2,"SASKIA: CHK requires at least two arguments!")
-	ls = compile("return "..para[1])
+	assert(_len(para)>=2,"SASKIA: CHK requires at least two arguments!")
+	if prefixed(para[1],"not ")
+		ls = compile("return not( Scyndi.GLOBALS.ScynSasGet."..Right(para[1],len(para[1])-4)..")")
+	else
+		ls = compile("return Scyndi.GLOBALS.ScynSasGet."..para[1])
+	end
+	if !ls
+		for i,v in pairs(para); print(i,v); end
+		Lua.error("CHK script construction caused an error!")
+	end
 	if ls() 
 		instructionstrue.JMP(session,{para[2]})
 	end
 end
+instructionstrue.CHK = __CHK
 
-instructionstrue.MOV = void(session,para)
+ddef __MOV
+//instructionstrue.MOV = void(session,para)
+	plua session
+	plua para
+	session,para = infinity
+
 	delegate ls
 	CSayF("Moving value %s into variable %s",para[1],para[2]) // debug
-	ls = assert(compile(para[2] .. " = "..para[1]))
+	ls = assert(compile("Scyndi.GLOBALS.ScynSasGet."..para[2] .. " = "..para[1]))
 	ls()
 end
+instructionstrue.MOV = __MOV
 
-instructionstrue.DEC = void(session,para)
+ddef __DEC
+//instructionstrue.DEC = void(session,para)
+	plua session
+	plua para
+	session,para = infinity
+
 	delegate ls
-	ls = assert(compile(para[1].." = "..para[1].." - "..(para[2] or "1")))
+	ls = assert(compile("Scyndi.GLOBALS.ScynSasGet."..para[1].." = Scyndi.GLOBALS.ScynSasGet."..para[1].." - "..(para[2] or "1")))
 	ls()
 end
+instructionstrue.DEC = __DEC
 
-instructionstrue.INC = void(session,para)
+ddef __INC
+//instructionstrue.INC = void(session,para)
+	plua session
+	plua para
+	session,para = infinity
 	delegate ls
-	ls = assert(compile(para[1].." = "..para[1].." + "..(para[2] or "1")))
+	ls = assert(compile("Scyndi.GLOBALS.ScynSasGet."..para[1].." = Scyndi.GLOBALS.ScynSasGet."..para[1].." + "..(para[2] or "1")))
 	ls()
 end
+instructionstrue.INC = __INC
 
-instructionstrue["END"] = void(session)
+ddef __END
+//instructionstrue["END"] = void(session)
+	plua session
+	plua para
+	session,para = infinity
 	session.running=false
 end
+instructionstrue["END"] = __END
 
-instructionstrue.GROUP = void(session,para)
+ddef __GROUP
+//instructionstrue.GROUP = void(session,para)
+	plua session
+	plua para
+	session,para = infinity
 	session.dontyield = tonumber(para[1] or 2)
 end
+instructionstrue["GROUP"] = __GROUP
 
-instructionstrue["RETURN"] = void(session)
+
+ddef __RETURN
+//instructionstrue["RETURN"] = void(session)
+	plua session
+	plua para
+	session,para = infinity
 	session.curline = session.insstack.Value
 	if not session.curline
 		session.running=false
 	end
 end
+instructionstrue["RETURN"] = __RETURN
 
-instructionstrue.GOSUB = void(session,params)
+ddef __GOSUB
+//instructionstrue.GOSUB = void(session,params)
+	plua session
+	plua params
+	session,params = infinity
+
 	session.insstack.Value = session.curline
 	instruction.JMP(session,params)
 end
+instructionstrue.GOSUB = __GOSUB
+CSay("SASKIA instruction set initiated!")
+End
 
+// Not sure what this is about, but likely my first debug setup before putting this into NALA
 string DefaultLoadFunction(string filename)
 	var f
 	string content
 	f = assert(io.open(filename, "rb"))
-	content = f:read("*all")
-	f:close()
+	//content = f:read("*all")
+	content = f.read(f,"*all")
+	//f:close()
+	f.close(f) 
+	// The : approach is NOT compatible with Scyndi
 	return content
 end	
 
@@ -187,40 +297,51 @@ end
 
 
 
-#pure
-local
-#endpure
+//#pure
+//local
+//#endpure
 class CL_SASINS
 	string command
 	table para
 	
-	void CONSTRUCTOR(cmd,para)
+	CONSTRUCTOR(cmd,_para)
+		//CSayF("Adding SASKIA instruction: %s (%s)",cmd,para)
+		//for k,v in pairs(_para); CSayF("  %s -> %s",k,v) ; end
 		self.command=cmd
-		self.para = para
+		self.para = _para
 	end
 end
 
-#pure
-local
-#endpure
+//#pure
+//local
+//#endpure
 class CL_SESSION
 	int curline = 0
 	int dontyield = 0
 	bool running = false
 	var insstack
-	var script
+	var parent_script
 	
-	void CONSTRUCTOR(script,startlabel)
-		startlabel = startlabel or ""
-		assert(type(startlabel)=="string","String expected for startlabel")
-		self.script=script
+	CONSTRUCTOR(_script,startlabel)
+		startlabel = startlabel || ""
+		Lua.assert(type(startlabel)=="string","String expected for startlabel")
+		self.parent_script=_script
+		//print("Testing!")		
 		if startlabel 
-			//CSay(NIL.LuaSerialize("labels",script.labels))
-			assert(script.labels[startlabel],"Label '"..startlabel.."' not found! Cannot start session!\n"..debug.traceback())
-			self.curline = script.labels[startlabel]
+			//printf("Testing! Testing! %s, %s\n",_script.labels,startlabel)
+			//Lua.assert(_script.labels[startlabel],"Label '"..startlabel.."' not found! Cannot start session!\n"..debug.traceback())
+			if (!_script.labels[startlabel])
+				for k,i in spairs(_script.labels)
+					print(k,i)
+				end
+			end
+			Lua.assert(_script.labels[startlabel],"Label '"..startlabel.."' not found! Cannot start session!")
+			//print("Testing! Testing! Testing!")
+			self.curline = _script.labels[startlabel]
+			//print("Testing! Testing! Testing! Testing!")
 		end
-		self.insstack = new TStack
-		self.script = script
+		self.insstack = new Stack()
+		self.parent_script = _script
 	end
 end
 
@@ -228,8 +349,8 @@ end
 //local
 //#endpure
 
-#macro CL_SASKIA SASKIA
-class SASKIA
+//#macro CL_SASKIA SASKIA
+class CL_SASKIA
 	table instr
 	table labels
 	static var sessions
@@ -237,25 +358,31 @@ class SASKIA
 	static delegate LoadFunction
 	
 	static var LoadScript(file)
-		string script
-		script = (CL_SASKIA.LoadFunction or DefaultLoadFunction)(file)
-		return new CL_SASKIA(script)
+		string _script
+		_script = (CL_SASKIA.LoadFunction || DefaultLoadFunction)(file)
+		//return new CL_SASKIA(_script)
+		r:=new CL_SASKIA(_script)
+		CSayF("SASKIA.LoadScript(\"%s\") will return (%s)%s",file,Lua.type(r),r)
+		return r
 	end
 	
-	void Parse(script)
+	void Parse(_script)
 		self.labels = {}
 		self.instr = {}
 		table lines
-		lines = brutesplit(script,'\n')
+		//lines = brutesplit(_script,"\n")
+		lines = xsplit(_script,"\n")
 		Now.StartTimeOut(10)
-		for i=1,#lines
+		//for i=1,_len(lines)
+		for i=0,len(lines)-1
 			as_tmo()
-			//CSay(NIL.LuaSerialize(i.."; lines",lines))
+			//CSayF("Parsing line %d of %d",i+1,len(lines))
 			lines[i] = Trim(lines[i])
 			if Left(lines[i],1)==";" or (Trim(lines[i])=="")
 				// Nothing at all here!
 			elseif Left(lines[i],1)==":"
-				self.labels[Right(lines[i],#lines[i]-1)] = #self.instr + 1
+				self.labels[Right(lines[i],_len(lines[i])-1)] = _len(self.instr) + 1
+				self.labels[Right(Upper(lines[i]),_len(lines[i])-1)] = _len(self.instr) + 1
 			else
 				string cmd
 				table para
@@ -265,31 +392,32 @@ class SASKIA
 				bool reeks = false
 				int timeout = 10000
 				//while not (p>=#lines[i] or (Mid(lines[i],p,1)==" " and (not reeks)) or (Mid(lines[i],p,1)=="\t" and (not reeks)))
-				while not (p>=#lines[i] or Mid(lines[i],p,1)==" " or Mid(lines[i],p,1)=="\t")
+				while ! (p>=_len(lines[i]) || Mid(lines[i],p,1)==" " || Mid(lines[i],p,1)=="\t")
 					as_tmo()
 					p = p + 1
 					timeout--
 					assert(timeout>0,"TIMEOUT!") 
 				end
-				cmd = string.upper(trim(Left(lines[i],p)))
+				cmd = upper(trim(Left(lines[i],p)))
 				p++
 				// ------ CSayF("From line %d comes instruction %s (%s) (whitespace is on %d)",i,lines[i],cmd,p)
-				while p<=#lines[i]
+				while p<=_len(lines[i])
+					//print(i+1,len(lines),p,len(lines[i]),parap,para[parap])
 					as_tmo()
-					para[parap] = para[parap] or ""
+					para[parap] = para[parap] || ""
 					//--CSayF("SASKIA DEBUG: %3d/%3d/%3d >> %s",i,p,parap,NIL.LuaSerialize('para',para))
 					switch Mid(lines[i],p,1)
 						case "\""
 							para[parap] = para[parap] .. "\""
 							reeks = not reeks
 						case "("
-							if not reeks
+							if ! reeks
 								haakjes = haakjes + 1
 							end
 							para[parap] = para[parap] .. "("
 						case ")"
-							if not reeks
-								assert(haakjes>0,"unexpected ) in SASKIA script line #"..i)							
+							if ! reeks
+								assert(haakjes>0,"unexpected ) in SASKIA script line #"..(i+1))							
 								haakjes = haakjes - 1
 							end
 							para[parap] = para[parap] .. ")"
@@ -301,9 +429,9 @@ class SASKIA
 					end
 					p++
 				end
-				assert(haakjes == 0 and (not reeks),"Unexpected end of line #"..i.." in SASKIA script")
-				self.instr[#self.instr+1] = new CL_SASINS(cmd,para)
-				for i=1,#para 
+				assert(haakjes == 0 and (not reeks),"Unexpected end of line #"..(i+1).." in SASKIA script")
+				self.instr[_len(self.instr)+1] = new CL_SASINS(cmd,para)
+				for i=1,_len(para) 
 					para[i]=trim(para[i])
 				end
 			end
@@ -311,17 +439,18 @@ class SASKIA
 		//Annoy("SASKIA SCRIPT PARSED!") // debug 
 	end
 		
-	void CONSTRUCTOR(string script)
-		self.Parse(script)
-		self.sessions = self.sessions or new TLinkedList
+	CONSTRUCTOR(string _script)
+		self.Parse(_script)
+		self.sessions = self.sessions || new TLinkedList()
 	end
 		
 	void Start(string label)
 		var s
 		s = new CL_SESSION(self,label)
-		s.running = true;
+		s.running = true
 		self.sessions.AddLast(s)
 		//CSayF("Session begin at label \"%s\"; reference: %s; Open sessions: %d",label,tostring(s),self.sessions.Count)
+		CSayF("SASKIA session started at label: %s",label)
 	end
 		
 	static bool Cycle()
@@ -332,15 +461,17 @@ class SASKIA
 		for ses,lnk in CL_SASKIA.sessions.Each
 			ret = true
 			//CSayF("Session: %s :Start",tostring(ses))
-			if (not ses.running) or ses.curline>#ses.script.instr
+			if (! ses.running) || ses.curline>_len(ses.parent_script.instr)
 				lnk.UnLink()
 			else
 				var ins
 				//CWriteLine("Group NoYield start!",180,0,255)
 				repeat
 					//-- CSayF("SASKIA SESSION: %3d - %3d > %s",ses.curline,ses.dontyield,ses.instr[ses.curline])
-					if ses.dontyield>0 then ses.dontyield = ses.dontyield - 1 end
-					ins = ses.script.instr[ses.curline]
+					if ses.dontyield>0 
+						ses.dontyield = ses.dontyield - 1 
+					end
+					ins = ses.parent_script.instr[ses.curline]
 					//CSayF("SASKIA INSTRUCTION #%d (noyield %d) >> %s\n",ses.curline,ses.dontyield,ins[".dump"])
 					//CSay(NIL.LuaSerialize(">> Parameters",ins.para))
 					if ins
@@ -366,6 +497,19 @@ class SASKIA
 	
 end
 
+delegate Wipe
+delegate Cycle
+delegate LoadScript
+Var      Sessions
+//delegate Start
+Init
+	CL_SASKIA.Sessions = new TLinkedList()
+	Wipe       = CL_SASKIA.Wipe
+	Cycle      = CL_SASKIA.Cycle
+	LoadScript = CL_SASKIA.LoadScript
+	Sessions   = CL_SASKIA.Sessions
+	//Start      = CL_SASKIA.Start
+End
 
 
 //#pure
