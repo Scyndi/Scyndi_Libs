@@ -1,0 +1,440 @@
+// License:
+// 	General/collections.scyndi
+// 	Collections
+// 	version: 25.07.01
+// 
+// 	Copyright (C) 2025 Jeroen P. Broks
+// 
+// 	This software is provided 'as-is', without any express or implied
+// 	warranty.  In no event will the authors be held liable for any damages
+// 	arising from the use of this software.
+// 
+// 	Permission is granted to anyone to use this software for any purpose,
+// 	including commercial applications, and to alter it and redistribute it
+// 	freely, subject to the following restrictions:
+// 
+// 	1. The origin of this software must not be misrepresented; you must not
+// 	   claim that you wrote the original software. If you use this software
+// 	   in a product, an acknowledgment in the product documentation would be
+// 	   appreciated but is not required.
+// 	2. Altered source versions must be plainly marked as such, and must not be
+// 	   misrepresented as being the original software.
+// 	3. This notice may not be removed or altered from any source distribution.
+// End License
+// License Information:
+// Collections.nlb/Collections.nil
+// Collections
+// version: 20.07.19
+// Copyright (C) 2019 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+
+
+Module
+
+locextern debug "debug"
+
+delegate c_sprintf = sprintf
+//c_sprintf = string.format
+
+//#accept unpack
+//#pure
+//unpack = unpack or function(t, i)
+plua unpack(t,i)
+	i = i || 1
+	if t[i] != nil 
+		return t[i], unpack(t, i + 1)
+	end
+end
+//local unpack = unpack
+//#endpure
+
+plua lua_len(a)
+	// This kiddos is disgusting code straight from the deepest depths of the cesspool! 
+	LocExtern r "#"
+	return r a
+end
+
+
+void col_assert(cond,string err)
+	if ! cond
+		error(err.."\n\n"..debug.traceback())
+	end
+end
+
+
+class MArray
+
+	readonly table mdim
+	readonly string atype
+	readonly table values
+	
+	get int dimensions
+		return lua_len(mdim)
+	end
+	
+	int Length(int dim)
+		assert(dim>=1 && dim<=lua_len(self.mdim),"Invalid dimension!")
+		return lua_len($mdim[dim])
+	end
+	
+	int toindex(infinity)
+		table dims
+		int ret = 0
+		dims = { infinity }
+		if type(dims[1])=="table"
+			dims=dims[1]
+		end
+		assert(lua_len(dims)==lua_len(self.mdim),c_sprintf("Invalid number of dimensions! (got %d, expected %d)",lua_len(dims),lua_len(self.mdim)))
+		ret = dims[1]
+		for dim,idx in ipairs(dims)
+			int mul = 1
+			col_assert(idx>=0 && idx<$mdim[dim],c_sprintf("Dimension %d out of range (%d)/(0-%d)",dim,idx,$mdim[dim]))
+			if dim>1
+				for d=2,dim
+					//assert($mdim[d-1],c_sprintf("???? %d ????",d-1))
+					//print(mul,'*',$mdim[d-1])
+					mul = mul * ($mdim[d-1])
+				end
+				ret = ret + (idx*mul)
+			end
+		end
+		return ret
+	end
+	
+	var GetValue(infinity)
+		int idx
+		var ret
+		idx = self.toindex(infinity)
+		ret = self.values[idx]
+		if ret
+			return ret
+		end
+		switch $Lower(atype)
+			case "string"
+				return ""
+			case "number" "int" "float"
+				return 0
+			case "bool" "boolean"
+				return false
+			case "table"
+				table createquicktable
+				$values[idx] = createquicktable
+				return createquicktable 
+			default
+				return nil
+		end
+	end
+	
+	void SetValue(infinity)
+		var query
+		table dims
+		var value
+		int idx
+		query = {infinity}
+		value = query[lua_len(query)]
+		for i=1,lua_len(query)-1
+			dims[i]=query[i]
+		end
+		idx = self.toindex(dims)
+		switch lower($atype)
+			case "string"
+				$values[idx] = tostring(value)
+			case "int"
+				Lua.assert(type(value)=="number" && math.floor(value)==value,"Integer number expected for value in this array")
+				$values[idx] = value
+			case "number"
+				assert(type(value)=="number","Value must be a number... got: "..type(value))
+				$values[idx] = value
+			case "bool" "boolean"
+				$values[idx] = value!=nil && value!=0 && value!="" && value!=false
+			case "table" "userdata" "function" "delegate"
+				string mytype
+				if $atype=="delegate"
+					mytype="function"
+				else
+					mytype=$atype
+				end
+				assert(type(value)==mytype || value==nil,"Expected "..$atype.." for value! got: "..type(value))
+				$values[idx] = value
+			case "var"
+				$values[idx] = value
+			default
+				assert(value==nil || (type(value)=="table" && value[".classname"] == $atype),"Expected "..$atype.." for value! got: "..type(value))
+				$values[idx] = value
+		end
+	end
+	
+	get var Serial
+		table dims
+		for i=1,lua_len(self.mdim)
+			dims[i] = 0
+		end
+		dims[1]=0-1		
+		//return var()
+		ddef rser
+			dims[1]++
+			for i,d in lua.ipairs(dims)
+				if d>=$mdim[i]
+					if i>=lua_len(self.mdim)
+						return nil;
+					end
+					dims[i+1]++
+					dims[i]=0
+				end
+			end
+			return dims,$values[self.toindex(dims)]
+		end
+		return rser
+	end
+	
+	CONSTRUCTOR(string aatype,infinity)
+		self.mdim = { infinity }
+		assert(lua_len(self.mdim)>=1,"Need at least 1 dimension!") 
+		for d,m in ipairs(self.mdim)
+			assert(type(m)=='number' && math.floor(m)==m && m>=1,c_sprintf("Invalid dimension setting for dimension #%d (%s)",d,tostring(m)))
+		end
+		self.atype = aatype
+	end
+
+end
+
+global var QuickArray(string mytype,int maxrange)
+	//table ret
+	var therealthing
+	therealthing = new MArray(mytype,maxrange)
+	//setmetatable(ret,{
+		//['__newindex'] = void(t,int idx,value)
+		ddef qani
+			plua t
+			int idx
+			plua value
+			t,idx,value = infinity
+			therealthing.SetValue(idx,value)
+		end
+		//['__index'] = var(t,key)
+		ddef qai
+			plua t
+			int key
+			t,key = infinity			
+			switch type(key)
+				case 'number'
+					return therealthing.GetValue(key)
+				case 'string'
+					switch Upper(key)
+						case "EACH"
+							int i
+							i=-1
+							//return var()
+							ddef ret
+								i++
+								if i>=therealthing.Length(1)
+									return nil;
+								end
+								return therealthing.GetValue(i)
+							end
+							return ret
+						case "LEN"
+							return therealthing.Length(1)
+						case "IPAIRS"
+							int i
+							i=-1
+							//return var()
+							ddef r
+								i++
+								if i>=therealthing.Length(1)
+									return nil,nil;
+								end
+								return i,therealthing.GetValue(i)
+							end
+							return r
+					end
+				default
+					lua.error("Illegal array readout!")
+			end
+		end
+		//['__len'] = int()
+		ddef qal
+			return therealthing.Length(1)
+		end
+	//})
+	rettab := SetMetaTable({},{ ["__len"]=qal,["__index"]=qai,["__newindex"]=qani } )
+	return rettab
+end
+
+global var NewMap(string mtype, string mvalue)
+	//table ret
+	table therealthing
+	string maptype
+	string mapvalue
+	maptype=mtype
+	mapvalue=mvalue
+	
+	//int length()
+	ddef length
+		int ret
+		for k,v in pairs(therealthing)
+			ret++
+		end
+		return ret
+	end
+	
+	//var valid(string wanttype,s,string chk)
+	ddef valid
+		string wanttype
+		plua s
+		string chk
+		wanttype,s,chk = infinity
+		switch wanttype
+			case "string"
+				return tostring(s)
+			case "int"
+				assert(type(s)=="number" && math.floor(s)==s,chk..": Integer number required!")
+				return s
+			case "number" "float"
+				assert(type(s)=="number",chk..": Integer number required! Got "..type(s))
+				return s
+			case "table" "function" "userdata"
+				assert(s==nil || type(s)==wanttype,chk..": Expected type: "..wanttype.."! Got "..type(s))
+				return s
+			case "delegate"
+				assert(s==nil || type(s)=='function',"Expected type: delegate! Got "..type(s))
+			case "bool" "boolean"
+				s = s!=nil && s!=false && s!="" && s!=0
+			case "var"
+				return s
+			default
+				if s!=nil 
+					assert(type(s)=='table' && s[".classname"]==wanttype,chk..": Expected class: "..s.."! Got "..type(s))
+				end
+				return s
+		end
+	end
+	
+	//setmetatable(ret,{
+		//['__newindex'] = void(t,key,value)
+		ddef mni
+			plua t
+			plua key
+			plua value
+			t,key,value = infinity
+			
+			if type(key)=="string" && Lua.string.sub(key,1,4)=="__MAP_"
+				error("Reserved key! Definition not possible!")
+			end
+			key = valid(maptype,key,"MapKey")
+			assert(key!=nil,"set: Can't handle nil for key")
+			therealthing[key]=valid(mapvalue,value,"MapValue."..tostring(key))
+		end
+		//['__index'] = var(t,key)
+		ddef mi
+			plua t
+			plua key
+			t,key = infinity
+			//print(type(key),key:sub(1,6))
+			if type(key)=="string" && Lua.string.sub(key,1,6)=="__MAP_"
+				//string kk
+				//kk = key:sub(7):upper()
+				string kk := Upper(Lua.string.sub(key,7))
+				switch kk
+					case "LEN" "LENGTH" "COUNT" "CNT"
+						return length()
+					case "REMOVE" "KILL" "DEL" "DELETE"
+						//return void(keydel)
+						ddef retdel
+							keydel := infinity
+							keydel = valid(maptype,keydel,"MapDel")
+							assert(keydel!=nil,"kill: Nil not acceptable as key")
+							therealthing[keydel]=nil;
+						end
+						return retdel
+					case "PAIRS"
+						table vk
+						int i := -1
+						for k,v in pairs(therealthing)
+							//vk[#vk+1] = k
+							vk += k
+						end
+						//return var()
+						ddef pairret
+							i++
+							if i>=len(vk)
+								return nil,nil;
+							end
+							return vk[i],therealthing[vk[i]]
+						end
+						return pairret
+					case "SORTEDPAIRS"
+						table keys
+						table sorttable
+						table types
+						int i := -1
+						for k,v in spairs(therealthing)
+							table work
+							sorttable[type(k)] = sorttable[type(k)] || {}
+							work = sorttable[type(k)]
+							work += k
+							//work[#work+1] = k
+						end
+						//if sorttable["number"]
+						//	table.sort(sorttable["number"])
+						//end
+						//if sorttable["string"]
+						//	table.sort(sorttable["string"])
+						//end
+						for k,v in pairs(sorttable)
+							//types[#types+1] = k
+							types += k
+						end
+						//table.sort(types)
+						for i,t in ipairs(types)
+							for ik,kkey in ipairs(sorttable[t])
+								//keys[#keys+1]=kkey
+								keys += kkey
+							end
+						end
+						
+						//return var()
+						ddef retsp
+							i++
+							return keys[i],therealthing[keys[i]]
+						end
+						return retsp
+					default
+						error("Unknown reserved key: "..key)
+				end
+			end
+			
+			key = valid(maptype,key,"MapGetKey")
+			assert(key!=nil,"get: Can't handle nil for key")
+			if therealthing[key]==nil 
+				switch mapvalue
+					case "string"
+						return ""
+					case "int" "number" "float"
+						return 0
+					case "table"
+						therealthing[key] = {}
+					case "bool" "boolean"
+						return false
+				end
+			end
+			return therealthing[key]
+		end
+		//["__len"] = length
+	//})
+	ret := SetMetaTable({},{["__len"]=length,["__index"]=mi,["__newindex"]=mni})	
+	return ret
+end
