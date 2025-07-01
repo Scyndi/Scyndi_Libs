@@ -1,0 +1,275 @@
+// License:
+// 	  Dyrt/DyrtScenario.scyndi
+// 
+// 	  Version: 25.07.01
+// 	
+// 	  Copyright (C) 2020, 2025 Jeroen Petrus Broks
+// 	
+// 	  ===========================
+// 	  This file is part of a project related to the Phantasar Chronicles or another
+// 	  series or saga which is property of Jeroen P. Broks.
+// 	  This means that it may contain references to a story-line plus characters
+// 	  which are property of Jeroen Broks. These references may only be distributed
+// 	  along with an unmodified version of the game.
+// 
+// 	  As soon as you remove or replace ALL references to the storyline or character
+// 	  references, or any termology specifically set up for the Phantasar universe,
+// 	  or any other univers a story of Jeroen P. Broks is set up for,
+// 	  the restrictions of this file are removed and will automatically become
+// 	  zLib licensed (see below).
+// 
+// 	  Please note that doing so counts as a modification and must be marked as such
+// 	  in accordance to the zLib license.
+// 	  ===========================
+// 
+// 
+// 	  zLib license terms:
+// 	
+// 	  This software is provided 'as-is', without any express or implied
+// 	  warranty.  In no event will the authors be held liable for any damages
+// 	  arising from the use of this software.
+// 
+// 	  Permission is granted to anyone to use this software for any purpose,
+// 	  including commercial applications, and to alter it and redistribute it
+// 	  freely, subject to the following restrictions:
+// 	
+// 	  1. The origin of this software must not be misrepresented; you must not
+// 	     claim that you wrote the original software. If you use this software
+// 	     in a product, an acknowledgment in the product documentation would be
+// 	     appreciated but is not required.
+// 	  2. Altered source versions must be plainly marked as such, and must not be
+// 	     misrepresented as being the original software.
+// 	  3. This notice may not be removed or altered from any source distribution.
+// End License
+// License Information:
+// Scenario.nlb/Scenario.nil
+// Scenario Parser
+// version: 20.07.19
+// Copyright (C) 2019 Jeroen P. Broks
+// This software is provided 'as-is', without any express or implied
+// warranty.  In no event will the authors be held liable for any damages
+// arising from the use of this software.
+// Permission is granted to anyone to use this software for any purpose,
+// including commercial applications, and to alter it and redistribute it
+// freely, subject to the following restrictions:
+// 1. The origin of this software must not be misrepresented; you must not
+// claim that you wrote the original software. If you use this software
+// in a product, an acknowledgment in the product documentation would be
+// appreciated but is not required.
+// 2. Altered source versions must be plainly marked as such, and must not be
+// misrepresented as being the original software.
+// 3. This notice may not be removed or altered from any source distribution.
+// End License Information
+
+
+Module
+
+//-- $USE libs/qgfx
+#use "Libs/SCI/Sys"
+#use "Libs/SCI/SString"
+
+//local scen={}
+
+LocExtern LLen "#"
+Extern Scenario "Scyndi.Class.Scen"
+
+
+table portret //= {} //scen.portret=portret
+table btdata //= {} //scen.btdata=btdata
+
+void RemoveData(string file) 
+	btdata = btdata || {} 
+	btdata[file] = nil 
+end
+
+class ScenRec
+	string Header
+	string PicDir
+	string PicSpc
+	string PicRef
+	string AltTxtFont
+	string SoundFile
+	table Lines
+	
+	Constructor()
+		Lines = {}
+	End
+end	
+
+void ProcessBLine(Rec,string Prefix,string DLine)
+	switch Prefix
+
+		case "ERROR"
+			error("Unknown scenario prefix") 			
+		case "!"
+		 	Rec.Header = DLine 
+		case "*"
+			Rec.PicDir = DLine
+		case ":"
+			Rec.PicSpc = DLine
+		case "%"
+			// Dummied old line, as this is also referring to .ttf files.
+			// BlitzMax could read them, but MonoGame cannot.
+			// ["%"] = function(Rec,DLine) Rec.AltTxtFont = "Fonts/"..DLine..".ttf"; CSay("Font: "..DLine)  end, -- Alternate font
+			Rec.AltTxtFont = "Fonts/"..DLine..".ttf"
+		case "#"
+			Lua.table.insert(Rec.Lines,DLine)
+			//for i,k in Lua.ipairs(Rec.Lines); print(i,k,DLine); End
+		case "$"
+			Rec.SoundFile = DLine
+		case "-"
+			// Nothing here
+		default
+			error("Unknown scenario prefix - "..Prefix)
+	end
+	//if Rec;for i,k in Lua.ipairs(Rec.Lines); print("\r\x1b[97m->",i,k,Rec,Rec.Lines); End; End
+end
+
+int len(a) 
+	return LLen a 
+end
+
+//local Image = { -- Faking the original GALE module qith the qgfx routines
+//   Exists = ImageLoaded,
+//   Exist = ImageLoaded,
+//   AssignLoad = LoadImage   
+//}
+//private 
+group Image
+	delegate Exists
+	get var Exist
+		return self.Exists
+	end
+	set var Exist
+		self.Exists = value
+	end
+	delegate AssignLoad
+	delegate Loaded
+end
+
+
+//private 
+group scen
+
+	// Done to make multi-engine stuff possible.
+	link ImageExists = Image.Exists
+	link ImageLoad = Image.Load
+
+	link portret = portret
+	link btdata = Lua.Scyndi.Class.DyrtScenario.btdata
+	link RemoveData = RemoveData
+	link Loaded = Image.Loaded
+	
+	// Must be set before usage
+	string lang
+	
+	// Must be set before usage
+	delegate JCR_Lines
+	delegate JCR_Exists
+	delegate print
+	
+	string audioext
+	Void _CONSTRUCTOR()
+		self.audioext = "wav"
+		self.print = print
+	end
+
+	table LoadData(string file,loadas,merge)
+		assert(scen.lang!="","scenario.lang has not been set!")
+		assert(scen.JCR_Lines,"scenario.JCR_Lines has not been set!")
+		assert(scen.JCR_Exists,"scenario.JCR_Exists has not been set!")
+		string lang
+		lang = trim(scen.lang)
+		file = trim(file)
+		loadas = trim(loadas || file)
+		int LineNumber
+		string Line
+
+		table crap 
+		self.print("Loading: Scenario/"..lang.."/"..file)
+		//crap = scen.JCR_Lines('Scenario/'..lang.."/"..file)
+		crap = scen.JCR_Lines(file)
+		self.print("= "..lLen crap.." lines read!")
+		table ret = {}
+		string section 
+		section = "[rem]"
+		string L
+		string Prefix
+		string DLine
+		var WorkRec
+
+		if merge; ret = btdata[loadas || file] || {}; end 
+		// CSay("Loading BoxText Data: "..file)
+		for zln,Line in ipairs(crap)
+			LineNumber:=zln+1
+			L = trim(Line)
+			printf("\x1b[92m%d/%d\r",LineNumber,len(crap))
+			if L!="" 
+				if left(L,1)=="[" && right(L,1=="]")
+					section = L
+				else
+					switch section
+						case "[rem]"
+						case "[tags]"
+							ret[L] = {}
+							CSayF("Tag: %s!",L)
+						case "[scenario]"
+							Prefix = left(L,1)
+							DLine = right(L,len(L)-1)             
+							if (! WorkRec) && Prefix!="@" && Prefix!="-"
+								error("Trying to assign data, while no boxtext record has yet been created in line #"..LineNumber)
+							end
+							if Prefix=="@" 
+								WorkRec = new ScenRec()
+								//{ Lines = {}, Header="", PicDir="", PicSpc="", SoundFile="" }
+								Lua.table.insert(ret[DLine],WorkRec)    
+								//Lua.print(ret[DLine],WorkRec,L)
+							elseif (LLen L>1 )
+								ProcessBLine(WorkRec,Prefix,DLine)   
+							end
+						default
+							error("Unknown language section: "..section.." in line #"..LineNumber)   
+					end
+				end
+			end			
+		end
+		CSayF("Loading scenario %s All done!",file)
+		
+
+		CSay("Voice connect!")
+		//-- Auto Tie Sound Files
+		for k,tag in pairs(ret)  
+			for i,rec in pairs(tag) 
+				if self.JCR_Exists("VOCALS/"..file.."/"..k.."_"..i.."."..self.audioext)  
+					rec.SoundFile = "Vocals/"..file.."/"..k.."_"..i.."."..self.audioext 
+					CSay("Got sound for "..k.." #"..i)
+				else
+					//-- CSay("no sound for "..k.." #"..i.."   (VOCALS/"..file.."/"..k.."_"..i..".ogg)",255,0,0) -- Only annoying. Can be unremmed if needed (which I doubt).  
+				end
+			end 
+		end
+		CSay("Voice connect! Done")
+		
+		// -- closure
+		CSayF("Linking scenario %s to %s",file,loadas || file)
+		btdata[loadas || file] = ret    
+		//-- print(serialize("btdata",btdata)) -- Debug Line, must be on rem in release
+		CSay("Returning!")
+		return ret
+	end
+	
+	table LoadNewData(string file,loadas)
+		btdata[loadas || file] = btdata[loadas || file] || self.LoadData(file,loadas)
+		return btdata[loadas || file]
+	end
+	
+end
+
+Init
+	scen._CONSTRUCTOR()
+	CSay("Dyrt Scenario Initiated")
+End
+
+//Global Get Var Scenario; return scen; End
+
+
