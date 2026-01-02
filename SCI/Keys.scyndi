@@ -1,0 +1,48 @@
+// License:
+// 
+// ***********************************************************
+// 
+// SCI/Keys.scyndi
+// 
+// 
+// This particular file has been released in the public domain
+// and is therefore free of any restriction. You are allowed
+// to credit me as the original author, but this is not
+// required.
+// 
+// This file was setup/modified in:
+// 2021, 2024, 2026
+// 
+// If the law of your country does not support the concept
+// of a product being released in the public domain, while
+// the original author is still alive, or if his death was
+// not longer than 70 years ago, you can deem this file
+// "(c) Jeroen Broks - licensed under the CC0 License",
+// with basically comes down to the same lack of
+// restriction the public domain offers. (YAY!)
+// 
+// ***********************************************************
+// 
+// 
+// Version 26.01.02 I
+// 
+// End License
+
+Module
+
+group KBKey                                                            
+        // list is not complete. I will add more if I need them!     
+        readonly int up = Events.KeyByName("Up")                     
+        readonly int down = Events.KeyByName("Down")
+        readonly int left = Events.KeyByName("Left")
+        readonly int right = Events.KeyByName("Right")
+        readonly int pageup = Events.KeyByName("PageUp")             
+        readonly int pagedown = Events.KeyByName("PageDown")         
+        readonly int backspace = Events.KeyByName("Backspace")       
+        readonly int leftshift = Events.KeyByName("Left Shift")      
+        readonly int rightshift = Events.KeyByName("Right Shift")    
+        readonly int kp_minus = Events.KeyByName("Keypad -")         
+                                                                     
+end                                                                  
+
+return KBKey
