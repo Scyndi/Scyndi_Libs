@@ -29,8 +29,9 @@
 // End License
 
 Module
+#use "Libs/SCI/Events"
 
-group KBKey                                                            
+//group KBKey                                                            
         // list is not complete. I will add more if I need them!     
         readonly int up = Events.KeyByName("Up")                     
         readonly int down = Events.KeyByName("Down")
@@ -43,6 +44,6 @@ group KBKey
         readonly int rightshift = Events.KeyByName("Right Shift")    
         readonly int kp_minus = Events.KeyByName("Keypad -")         
                                                                      
-end                                                                  
+//end                                                                  
 
-return KBKey
+
