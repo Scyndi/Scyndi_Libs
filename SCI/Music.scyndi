@@ -43,10 +43,14 @@
 Module
 
 #use "Libs/SCI/Sys"
+#use "Libs/SCI/JCR6"
 #use "Libs/SCI/Audio"
 #use "Libs/SCI/GINIE"
-#use "Libs/SCI/JCR6"
+#use "Libs/SCI/Events"
 
+
+// Leftover from old times. Saves me code rot!
+ReadOnly Bool Available = True
 
 // This will allow Music to use the same data from ALL states (very important)
 var RGV = GINIE.CreateNew("MUSIC_GLOBAL_VARIABLES")
@@ -128,3 +132,25 @@ End
 Void Pop(DoNotPlay)
 	Pull(DoNotPlay)
 End
+
+Void PopVoid()
+	Pushed=0
+	// Cheap, but will do the job!
+End
+
+Get Int MusicVolume; Return Audio.GetVolume(0); End
+Set Int MusicVolume; Audio.SetVolume(0,Value); End
+
+Void FadeTo(Int Vol)
+	Int TimeOut=10000
+	repeat
+		Events.Poll()
+		If MusicVolume>Vol
+			MusicVolume--
+		ElIf MusicVolume<Vol
+			MusicVolume++
+		End
+		TimeOut--
+		Lua.assert(TimeOut>=0,sprintf("Music.Fade(%d): Timeout!",Vol))
+	until MusicVolume==Vol
+end
