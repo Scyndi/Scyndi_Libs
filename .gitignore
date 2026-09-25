@@ -2,3 +2,7 @@
 *.stb
 MKL_*
 *.MKL.*
+
+
+# Has its own repository
+Voshia
