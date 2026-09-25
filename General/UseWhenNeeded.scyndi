@@ -1,7 +1,7 @@
 // License:
 // 	General/UseWhenNeeded.scyndi
 // 	Use When Needed
-// 	version: 26.04.02
+// 	version: 26.09.25
 // 
 // 	Copyright (C) 2024, 2026 Jeroen P. Broks
 // 
@@ -27,19 +27,28 @@
 
 Module
 
-#define debug_uwn
+#undef debug_uwn
+
+#use "Libs/SCI/Sys"
+#use "Libs/SCI/JCR6"
+#use "Libs/SCI/SString"
 
 Var Reg
 
-Var GetModule(string _m)
+Var GetModule(string _m,string pref="")
 	m := Upper(_m)
 	Reg = Reg || {}
 	If !Reg[m]
-		#if debug_uwn
-	        print("UWN.Using: "..m)
-	    #fi
+		//#if debug_uwn
+	    //    print("UWN.Using: "..m)
+	    //#fi
+	    If !JCR6.EntryExists(_m..".lbc")
+	    	print("\x07\x1b[91mERROR!\n\x1b[97mUWN cannot find requested module: ".._m)
+	    	print(Lua.debug.traceback())
+	    	Sys.TraceBack()
+	    End
 	    Lua.Scyndi.Use(_m)
-	    Reg[m] = Lua.Scyndi.Class[StripDir(m)]
+	    Reg[m] = Lua.Scyndi.AllIdentifiers[pref..StripDir(m)]
 	End
 	//Reg[m] = Reg[m] || NeilUse(m)
 	Return Reg[m]
@@ -47,15 +56,19 @@ End
 
 
 Void Err(s,string k, v)
-	Lua.error(sprintf("Cannot assign %s (%s) to key %k in UWN module. All of that is read-only!",Lua.type(v),Lua.tostring(v),k))
+	Lua.error(sprintf("Cannot assign %s (%s) to key %s in UWN module. All of that is read-only!",Lua.type(v),Lua.tostring(v),k))
 End
 
-Global Var UWN(string path)
+Global Var UWN(string path,string pref="")
 	if !suffixed(path,"/")
 	        path += "/"
 	End
-	Var idx(s,string k)
-	        Return GetModule(path..k)
+	//Var idx(s,string k)
+	ddef idx
+		plua s
+		string k
+		s,k=Infinity
+	    Return GetModule(path..k,pref)
 	End
 	return Lua.setmetatable({},{["__index"]=idx,["__newindex"]=Err})
 End
