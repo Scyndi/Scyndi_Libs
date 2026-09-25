@@ -1,9 +1,9 @@
 // License:
 // 	SCI/scenario_star.scyndi
 // 	Star Story Scenario Routines - Converted from Neil to Scyndi
-// 	version: 25.03.13
+// 	version: 26.09.25
 // 
-// 	Copyright (C) 2020, 2021, 2025 Jeroen P. Broks
+// 	Copyright (C) 2020, 2021, 2025, 2026 Jeroen P. Broks
 // 
 // 	This software is provided 'as-is', without any express or implied
 // 	warranty.  In no event will the authors be held liable for any damages
@@ -88,6 +88,7 @@ void ProcessBLine(Rec,string Prefix,string DLine)
 		case "-"
 			// Nothing here
 		default
+			printf("\x07\x1b[91m%s\x1b[92m%s\n",Prefix,DLine)
 			Lua.error("Unknown scenario prefix - "..Prefix)
 	end
 	//if !Rec
